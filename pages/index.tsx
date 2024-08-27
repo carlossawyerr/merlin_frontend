@@ -5,6 +5,7 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [folderName, setFolderName] = useState<string | null>(null);
   const [stitchedVideoUrl, setStitchedVideoUrl] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<any>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -56,13 +57,29 @@ export default function Home() {
         });
       }
       alert('Upload successful!');
-      checkForStitchedVideo(newFolderName);
+      checkProcessingStatus(newFolderName);
     } catch (error) {
       console.error('Error uploading files:', error);
       alert('Upload failed');
     } finally {
       setUploading(false);
       setFiles([]);
+    }
+  };
+
+  const checkProcessingStatus = async (folderName: string) => {
+    try {
+      const response = await fetch(`/api/check-processing-status?folderName=${folderName}`);
+      const data = await response.json();
+      setProcessingStatus(data);
+
+      if (data.stitchedVideoStatus === 'COMPLETED') {
+        checkForStitchedVideo(folderName);
+      } else {
+        setTimeout(() => checkProcessingStatus(folderName), 10000); // Check every 10 seconds
+      }
+    } catch (error) {
+      console.error('Error checking processing status:', error);
     }
   };
 
@@ -84,7 +101,7 @@ export default function Home() {
 
   useEffect(() => {
     if (folderName) {
-      checkForStitchedVideo(folderName);
+      checkProcessingStatus(folderName);
     }
   }, [folderName]);
 
@@ -123,6 +140,16 @@ export default function Home() {
         {folderName && (
           <div className="mt-4 text-sm text-blue-500 text-center">
             Files have been uploaded to folder: {folderName}
+          </div>
+        )}
+        {processingStatus && (
+          <div className="mt-4">
+            <h2 className="text-xl font-semibold mb-2">Processing Status</h2>
+            <ul className="list-disc pl-5">
+              <li>Audio Extraction: {processingStatus.audioStatus || 'Pending'}</li>
+              <li>Transcription: {processingStatus.transcriptionStatus || 'Pending'}</li>
+              <li>Video Stitching: {processingStatus.stitchedVideoStatus || 'Pending'}</li>
+            </ul>
           </div>
         )}
         {stitchedVideoUrl && (
