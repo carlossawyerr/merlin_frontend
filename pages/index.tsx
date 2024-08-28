@@ -6,6 +6,7 @@ export default function Home() {
   const [folderName, setFolderName] = useState<string | null>(null);
   const [stitchedVideoUrl, setStitchedVideoUrl] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<any>(null);
+  const [statusText, setStatusText] = useState("Pending...");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -67,21 +68,28 @@ export default function Home() {
     }
   };
 
-  const checkProcessingStatus = async (folderName: string) => {
+  const checkProcessingStatus = async (folderId: string) => {
     try {
-      const response = await fetch(`/api/check-processing-status?folderName=${folderName}`);
-      const data = await response.json();
-      setProcessingStatus(data);
+        const response = await fetch(`/api/check-processing-status?folderId=${folderId}`);
+        const data = await response.json();
+        setProcessingStatus(data);
 
-      if (data.stitchedVideoStatus === 'COMPLETED') {
-        checkForStitchedVideo(folderName);
-      } else {
-        setTimeout(() => checkProcessingStatus(folderName), 10000); // Check every 10 seconds
-      }
+        if (data.overallStatus === 'COMPLETED') {
+            setStatusText("Audio Extraction Completed");
+
+            // Update audioStatus to "Completed"
+            setProcessingStatus(prevStatus => ({
+                ...prevStatus,
+                audioStatus: "Completed"
+            }));
+        } else {
+            setTimeout(() => checkProcessingStatus(folderId), 10000); // Continue polling every 10 seconds
+        }
     } catch (error) {
-      console.error('Error checking processing status:', error);
+        console.error('Error checking processing status:', error);
     }
-  };
+};
+
 
   const checkForStitchedVideo = async (folderName: string) => {
     try {
@@ -152,6 +160,9 @@ export default function Home() {
             </ul>
           </div>
         )}
+        <div className="mt-4 text-sm text-blue-500 text-center">
+          {statusText}
+        </div>
         {stitchedVideoUrl && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-2">Stitched Video</h2>
